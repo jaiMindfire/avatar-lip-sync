@@ -28,27 +28,32 @@ export function Avatar(props) {
   const { animations: walkAnimation } = useFBX("/animations/Walking.fbx");
 
   const { x, y, z } = props.pos;
-  console.log(x, y, z);
 
   const [animation, setAnimation] = useState(null);
   const [isJumping, setIsJumping] = useState(false);
   const [isWalking, setIsWalking] = useState(false);
 
-  const { playAudio, script, smoothMorphTarget, morphTargetSmoothing, jump, walk } =
-    useControls({
-      playAudio: false,
-      smoothMorphTarget: true,
-      morphTargetSmoothing: 0.5,
-      jump: {
-        value: false,
-        disabled: isJumping,
-      },
-      walk: false,
-      script: {
-        value: "welcome",
-        options: ["welcome"],
-      },
-    });
+  const {
+    playAudio,
+    script,
+    smoothMorphTarget,
+    morphTargetSmoothing,
+    jump,
+    walk,
+  } = useControls({
+    playAudio: false,
+    smoothMorphTarget: true,
+    morphTargetSmoothing: 0.5,
+    jump: {
+      value: false,
+      disabled: isJumping,
+    },
+    walk: false,
+    script: {
+      value: "welcome",
+      options: ["welcome"],
+    },
+  });
 
   const audio = useMemo(() => new Audio(`/audios/${script}.wav`), [script]);
   const jsonFile = useLoader(FileLoader, `audios/${script}.json`);
@@ -67,91 +72,127 @@ export function Avatar(props) {
 
   const hasAudioPlayed = useRef(false);
 
-  useFrame((state, delta) => {
-    if (playAudio) {
-      const currentAudioTime = audio.currentTime;
-      if (audio.paused || audio.ended) return;
+  const lipSync = () => {
+    const currentAudioTime = audio.currentTime;
+    if (audio.paused || audio.ended) return;
 
-      Object.values(corresponding).forEach((value) => {
+    Object.values(corresponding).forEach((value) => {
+      if (!smoothMorphTarget) {
+        nodes.Wolf3D_Head.morphTargetInfluences[
+          nodes.Wolf3D_Head.morphTargetDictionary[value]
+        ] = 0;
+        nodes.Wolf3D_Teeth.morphTargetInfluences[
+          nodes.Wolf3D_Teeth.morphTargetDictionary[value]
+        ] = 0;
+      } else {
+        nodes.Wolf3D_Head.morphTargetInfluences[
+          nodes.Wolf3D_Head.morphTargetDictionary[value]
+        ] = MathUtils.lerp(
+          nodes.Wolf3D_Head.morphTargetInfluences[
+            nodes.Wolf3D_Head.morphTargetDictionary[value]
+          ],
+          0,
+          morphTargetSmoothing
+        );
+
+        nodes.Wolf3D_Teeth.morphTargetInfluences[
+          nodes.Wolf3D_Teeth.morphTargetDictionary[value]
+        ] = MathUtils.lerp(
+          nodes.Wolf3D_Teeth.morphTargetInfluences[
+            nodes.Wolf3D_Teeth.morphTargetDictionary[value]
+          ],
+          0,
+          morphTargetSmoothing
+        );
+      }
+    });
+
+    for (let i = 0; i < lipsync.mouthCues.length; i++) {
+      const mouthCue = lipsync.mouthCues[i];
+      if (
+        currentAudioTime >= mouthCue.start &&
+        currentAudioTime <= mouthCue.end
+      ) {
         if (!smoothMorphTarget) {
           nodes.Wolf3D_Head.morphTargetInfluences[
-            nodes.Wolf3D_Head.morphTargetDictionary[value]
-          ] = 0;
+            nodes.Wolf3D_Head.morphTargetDictionary[
+              corresponding[mouthCue.value]
+            ]
+          ] = 1;
           nodes.Wolf3D_Teeth.morphTargetInfluences[
-            nodes.Wolf3D_Teeth.morphTargetDictionary[value]
-          ] = 0;
+            nodes.Wolf3D_Teeth.morphTargetDictionary[
+              corresponding[mouthCue.value]
+            ]
+          ] = 1;
         } else {
           nodes.Wolf3D_Head.morphTargetInfluences[
-            nodes.Wolf3D_Head.morphTargetDictionary[value]
+            nodes.Wolf3D_Head.morphTargetDictionary[
+              corresponding[mouthCue.value]
+            ]
           ] = MathUtils.lerp(
             nodes.Wolf3D_Head.morphTargetInfluences[
-              nodes.Wolf3D_Head.morphTargetDictionary[value]
+              nodes.Wolf3D_Head.morphTargetDictionary[
+                corresponding[mouthCue.value]
+              ]
             ],
-            0,
+            1,
             morphTargetSmoothing
           );
-
           nodes.Wolf3D_Teeth.morphTargetInfluences[
-            nodes.Wolf3D_Teeth.morphTargetDictionary[value]
+            nodes.Wolf3D_Teeth.morphTargetDictionary[
+              corresponding[mouthCue.value]
+            ]
           ] = MathUtils.lerp(
             nodes.Wolf3D_Teeth.morphTargetInfluences[
-              nodes.Wolf3D_Teeth.morphTargetDictionary[value]
+              nodes.Wolf3D_Teeth.morphTargetDictionary[
+                corresponding[mouthCue.value]
+              ]
             ],
-            0,
+            1,
             morphTargetSmoothing
           );
         }
-      });
 
-      for (let i = 0; i < lipsync.mouthCues.length; i++) {
-        const mouthCue = lipsync.mouthCues[i];
-        if (
-          currentAudioTime >= mouthCue.start &&
-          currentAudioTime <= mouthCue.end
-        ) {
-          if (!smoothMorphTarget) {
-            nodes.Wolf3D_Head.morphTargetInfluences[
-              nodes.Wolf3D_Head.morphTargetDictionary[
-                corresponding[mouthCue.value]
-              ]
-            ] = 1;
-            nodes.Wolf3D_Teeth.morphTargetInfluences[
-              nodes.Wolf3D_Teeth.morphTargetDictionary[
-                corresponding[mouthCue.value]
-              ]
-            ] = 1;
-          } else {
-            nodes.Wolf3D_Head.morphTargetInfluences[
-              nodes.Wolf3D_Head.morphTargetDictionary[
-                corresponding[mouthCue.value]
-              ]
-            ] = MathUtils.lerp(
-              nodes.Wolf3D_Head.morphTargetInfluences[
-                nodes.Wolf3D_Head.morphTargetDictionary[
-                  corresponding[mouthCue.value]
-                ]
-              ],
-              1,
-              morphTargetSmoothing
-            );
-            nodes.Wolf3D_Teeth.morphTargetInfluences[
-              nodes.Wolf3D_Teeth.morphTargetDictionary[
-                corresponding[mouthCue.value]
-              ]
-            ] = MathUtils.lerp(
-              nodes.Wolf3D_Teeth.morphTargetInfluences[
-                nodes.Wolf3D_Teeth.morphTargetDictionary[
-                  corresponding[mouthCue.value]
-                ]
-              ],
-              1,
-              morphTargetSmoothing
-            );
-          }
-
-          break;
-        }
+        break;
       }
+    }
+  };
+
+  const startWalk = (distance, targetDistance, targetPosition) =>{
+    if (distance > targetDistance) {
+      // Start the walk animation if it's not already running
+      if (!actions.Walk.isRunning()) {
+        actions.Idle?.fadeOut(0.5);
+        actions.Walk?.reset().fadeIn(0.5).play();
+      }
+
+      // Adjust the animation speed based on the distance
+      const animationSpeedFactor = Math.max(0.01, distance / 10); // Scale factor for speed
+      actions.Walk.setEffectiveTimeScale(animationSpeedFactor);
+
+      // Calculate the direction and move the character toward the target
+      const direction = targetPosition
+        .clone()
+        .sub(group.current.position)
+        .normalize();
+      group.current.position.add(direction.multiplyScalar(0.1)); // Adjust speed as needed
+
+      // Rotate character to face the movement direction
+      group.current.lookAt(targetPosition);
+    } else {
+      // Stop movement and switch to idle animation
+      actions.Walk?.fadeOut(0.5);
+      actions.Idle?.reset().fadeIn(0.5).play();
+      props.setMove(false); // Stop moving once at target
+
+      // Reset the walk animation speed to default for the next movement
+      actions.Walk.setEffectiveTimeScale(1);
+    }
+  }
+
+  useFrame((state, delta) => {
+    if (playAudio) {
+      lipSync();
     }
     if (
       props.pos.x !== null &&
@@ -169,45 +210,12 @@ export function Avatar(props) {
       // Calculate the distance between the current and target positions
       const distance = group.current.position.distanceTo(targetPosition);
       const targetDistance = 0.1; // Distance threshold for stopping
-
-      if (distance > targetDistance) {
-        // Start the walk animation if it's not already running
-        if (!actions.Walk.isRunning()) {
-          actions.Idle?.fadeOut(0.5);
-          actions.Walk?.reset().fadeIn(0.5).play();
-        }
-
-        // Adjust the animation speed based on the distance
-        const animationSpeedFactor = Math.max(0.01, distance / 10); // Scale factor for speed
-        actions.Walk.setEffectiveTimeScale(animationSpeedFactor);
-
-        // Calculate the direction and move the character toward the target
-        const direction = targetPosition
-          .clone()
-          .sub(group.current.position)
-          .normalize();
-        group.current.position.add(direction.multiplyScalar(0.1)); // Adjust speed as needed
-
-        // Rotate character to face the movement direction
-        group.current.lookAt(targetPosition);
-      } else {
-        // Stop movement and switch to idle animation
-        actions.Walk?.fadeOut(0.5);
-        actions.Idle?.reset().fadeIn(0.5).play();
-        props.setMove(false); // Stop moving once at target
-
-        // Reset the walk animation speed to default for the next movement
-        actions.Walk.setEffectiveTimeScale(1);
-      }
+      startWalk(distance, targetDistance, targetPosition)
     }
   });
 
-  // useEffect(() => {
-  //   actions.Idle?.reset().fadeIn(0.5).play(); // Start Idle in a loop on mount
-  // }, [actions]);
 
   useEffect(() => {
-    console.log("firstr");
     if (jump) {
       actions.Jump.setLoop(LoopOnce);
       actions.Jump.clampWhenFinished = true;
@@ -218,18 +226,14 @@ export function Avatar(props) {
     }
 
     if (walk) {
-        actions.Walk.setLoop(LoopOnce);
-        actions.Walk.clampWhenFinished = true;
-        actions.Idle?.fadeOut(0.5);
-        actions.Wave?.fadeOut(0.5);
-        actions.Walk?.reset().fadeIn(0.5).play();
-        setIsJumping(false);
-      }
-    // if (animation) {
-    //   actions.Idle?.fadeOut(0.5);
-    //   actions.Wave?.fadeOut(0.5);
-    //   actions.Walk?.reset().fadeIn(0.5).play();
-    // }
+      actions.Walk.setLoop(LoopOnce);
+      actions.Walk.clampWhenFinished = true;
+      actions.Idle?.fadeOut(0.5);
+      actions.Wave?.fadeOut(0.5);
+      actions.Walk?.reset().fadeIn(0.5).play();
+      setIsJumping(false);
+    }
+
   }, [jump, actions, isJumping, animation, walk]);
 
   const handleAudioEnded = () => {
@@ -239,7 +243,6 @@ export function Avatar(props) {
   };
 
   useEffect(() => {
-    console.log("second");
     audio.addEventListener("ended", handleAudioEnded);
 
     if (playAudio && !hasAudioPlayed.current) {
@@ -258,7 +261,7 @@ export function Avatar(props) {
   }, [playAudio, script, audio, actions]);
 
   useEffect(() => {
-    console.log(props.command);
+
     if (props.command === "jump") {
       actions.Jump.setLoop(LoopOnce);
       actions.Jump.clampWhenFinished = true;
